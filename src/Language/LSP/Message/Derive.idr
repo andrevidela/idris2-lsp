@@ -50,7 +50,7 @@ genReadableSym hint = do
 var : Name -> TTImp
 var = IVar EmptyFC
 
-bindvar : String -> TTImp
+bindvar : Name -> TTImp
 bindvar = IBindVar EmptyFC
 
 primStr : String -> TTImp
@@ -130,7 +130,7 @@ deriveToJSON opts n = do
       pure ([], foldr (\(k, v), acc => `(Just (MkPair ~(primStr k) ~v) :: ~acc)) `([]) r)
 
     applyBinds : TTImp -> List Name -> TTImp
-    applyBinds = foldr (\n, acc => `(~acc ~(bindvar $ show n)))
+    applyBinds = foldr (\n, acc => `(~acc ~(bindvar n)))
 
 ||| Automatic derivation of `FromJSON` instances.
 ||| NOTE: all the fields in each constructor MUST be named, record already
@@ -169,7 +169,7 @@ deriveFromJSON opts n = do
     clauses <- traverse (\(cn, as) => genClause funName cn argName (reverse as)) cons
     let clauses = if opts.tagged
                      then (uncurry patClause <$> clauses)
-                     else [patClause `(~(var funName) (JObject ~(bindvar $ show argName)))
+                     else [patClause `(~(var funName) (JObject ~(bindvar argName)))
                                      (foldl (\acc, x => `(~x <|> ~acc)) `(Nothing) (snd <$> clauses))]
     let funClaim = IClaim $ MkFCVal EmptyFC $ MkIClaimData MW Export [Inline] (MkTy EmptyFC (NoFC funName) `(JSON -> Maybe ~(var name)))
     let funDecl = IDef EmptyFC funName (clauses ++ [patClause `(~(var funName) ~implicit') `(Nothing)])
@@ -191,7 +191,7 @@ deriveFromJSON opts n = do
 
     genClause : Name -> Name -> Name -> List (Name, TTImp) -> Elab (TTImp, TTImp)
     genClause funName t m xs = do
-      let lhs = `(~(var funName) (JObject [MkPair ~(primStr $ show $ stripNs t) (JObject ~(bindvar $ show m))]))
+      let lhs = `(~(var funName) (JObject [MkPair ~(primStr $ show $ stripNs t) (JObject ~(bindvar m))]))
       let rhs = foldr (\(n, type), acc => let name = primStr $ fromMaybe (show n) $ lookup (show n) opts.renames in
                                               case type of
                                                    `(Prelude.Types.Maybe _) => `(~acc <*> (pure $ lookup ~name ~(var m) >>= fromJSON))
