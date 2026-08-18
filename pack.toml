@@ -1,0 +1,24 @@
+[custom.all.stellar-api]
+type   = "git"
+url    = "https://gitlab.com/avidela/stellar/"
+commit = "latest:main"
+ipkg   = "api/stellar-api.ipkg"
+
+[custom.all.stellar-fs]
+type = "git"
+url    = "https://gitlab.com/avidela/stellar/"
+commit = "latest:main"
+ipkg   = "fs/stellar-fs.ipkg"
+
+[custom.all.json-schema]
+path = "Idris2-JSON-Schema"
+url = "https://github.com/andrevidela/idris2-json-schema"
+ipkg = "json-schema.ipkg"
+type = "git"
+commit = "main"
+
+[custom.all.algdata]
+type = "git"
+url = "https://gitlab.com/avidela/algebraic-data.git"
+commit = "e266ad0180aed2b75ea7004915bdd6111086cc45"
+ipkg = "algdata.ipkg"
