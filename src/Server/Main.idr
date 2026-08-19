@@ -70,6 +70,16 @@ parseHeaderPart h = do
     Just StartContent => pure $ Right Nothing
     Nothing => pure $ Right Nothing
 
+data LSPResponseType
+  = Unknown ResponseError
+  | Valid (method : Method Client Request ** ResponseMessage method)
+  | Notif -- nothing to respond to
+
+sendResponse : Ref LSPConf LSPConfiguration => LSPResponseType -> Core ()
+sendResponse (Unknown errMsg) = sendUnknownResponseMessage errMsg
+sendResponse (Valid (method ** msg)) = sendResponseMessage method msg
+sendResponse Notif = pure ()
+
 parameters
   {auto _ : Ref LSPConf LSPConfiguration}
   {auto _ : Ref Ctxt Defs}
@@ -78,58 +88,60 @@ parameters
   {auto _ : Ref MD Metadata}
   {auto _ : Ref ROpts REPLOpts}
 
-  handleJSONMessage : String -> Core ()
+  handleJSONMessage : String -> Core LSPResponseType
   handleJSONMessage msg = do
     logD Channel "Received message: \{msg}"
     let Just msg = parse msg
       | _ => do logE Channel "Cannot parse message"
-                sendUnknownResponseMessage parseError
+                pure $ Unknown parseError
     let JObject fields = msg
       | _ => do logE Channel "Message is not a JSON object"
-                sendUnknownResponseMessage $ invalidRequest "Message is not object"
+                pure $ Unknown $ invalidRequest "Message is not object"
     let Just (JString "2.0") = lookup "jsonrpc" fields
       | _ => do logE Channel "Message has no jsonrpc field"
-                sendUnknownResponseMessage (invalidRequest "jsonrpc is not \"2.0\"")
+                pure $ Unknown (invalidRequest "jsonrpc is not \"2.0\"")
     case lookup "method" fields of
       Just methodJSON => do -- request or notification
         case lookup "id" fields of
           Just idJSON => do -- request
             let Just id = fromJSON {a=OneOf [Int, String]} idJSON
               | _ => do logE Channel "Message id is not of the correct type"
-                        sendUnknownResponseMessage (invalidRequest "id is not int or string")
+                        pure $ Unknown (invalidRequest "id is not int or string")
             let Just method = fromJSON {a=Method Client Request} methodJSON
               | _ => do logE Channel "Method not found"
-                        sendResponseMessage Initialize $ Failure (extend id) methodNotFound
+                        pure $ Valid (Initialize ** Failure (extend id) methodNotFound)
             logI Channel "Received request for method \{show (toJSON method)}"
             let Just params = fromMaybeJSONParameters method (lookup "params" fields)
               | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
-                        sendResponseMessage method $ Failure (extend id) (invalidParams "Invalid params for send \{show methodJSON}")
+                        pure (Valid  (method ** Failure (extend id) (invalidParams "Invalid params for send \{show methodJSON}")))
             -- handleRequest can be modified to use a callback if needed
             result <- catch (handleRequest method params) $ \err => do
               logE Server "Error while handling request: \{show err}"
               resetContext (Virtual Interactive)
               pure $ Left (MkResponseError (Custom 4) (show err) JNull)
-            sendResponseMessage method $ case result of
+            pure $ Valid (method **  case result of
               Left error => Failure (extend id) error
-              Right result => Success (extend id) result
+              Right result => Success (extend id) result)
 
           Nothing => do -- notification
             let Just method = fromJSON {a=Method Client Notification} methodJSON
               | _ => do logE Channel "Method not found"
-                        sendUnknownResponseMessage methodNotFound
+                        pure $ Unknown methodNotFound
             logI Channel "Received notification for method \{show (toJSON method)}"
             let Just params = fromMaybeJSONParameters method (lookup "params" fields)
               | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
-                        sendUnknownResponseMessage $ invalidParams "Invalid params for send \{show methodJSON}"
+                        pure $ Unknown $ invalidParams "Invalid params for send \{show methodJSON}"
             catch (handleNotification method params) $ \err => do
               logE Server "Error while handling notification: \{show err}"
               resetContext (Virtual Interactive)
+            pure Notif
 
       Nothing => do -- response
         let Just idJSON = lookup "id" fields
           | _ => do logE Channel "Received message with neither method nor id"
-                    sendUnknownResponseMessage (invalidRequest "Message does not have method or id")
+                    pure $ Unknown (invalidRequest "Message does not have method or id")
         logW Server "Ignoring response with id \{show idJSON}"
+        pure Notif
 
   handleMessage : Core ()
   handleMessage = do
@@ -145,7 +157,8 @@ parameters
           logE Server "Cannot retrieve body of message: \{show err}"
           sendUnknownResponseMessage $ internalError "Error while recovering the content part of a message"
           coreLift $ exitWith (ExitFailure 1)
-    handleJSONMessage msg
+    response <- handleJSONMessage msg
+    sendResponse response
 
   runServer : Core ()
   runServer = handleMessage >> runServer
