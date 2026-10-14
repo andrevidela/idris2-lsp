@@ -1,0 +1,6 @@
+[custom.all.lsp-lib]
+type        = "github"
+url         = "https://github.com/andrevidela/lsp-lib"
+commit      = "main"
+ipkg        = "lsp-lib.ipkg"
+

@@ -22,6 +22,12 @@ import System.File
 import System
 import System.Info
 
+%hide Language.Reflection.TT.FilePos
+%hide Language.Reflection.TT.Name
+%hide Language.Reflection.TT.FC
+
+%hide Text.Bounds.Position
+
 ||| Gets a specific component of a reference, using the supplied projection.
 export
 gets : (l : label) -> Ref l a => (a -> b) -> Core b
@@ -103,7 +109,7 @@ prettyTerm : IPTerm -> Doc IdrisAnn
 prettyTerm = prettyBy Syntax
 
 export
-searchCache : Ref LSPConf LSPConfiguration => Range -> IdrisAction -> Core (List CodeAction)
+searchCache : Context.Ref LSPConf LSPConfiguration => Range -> IdrisAction -> Core (List CodeAction)
 searchCache r type = do
   cache <- gets LSPConf cachedActions
   let inRange = dominators (cast r) cache
