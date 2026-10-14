@@ -14,7 +14,6 @@ import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
 import Idris.Doc.String
-import Language.JSON
 import Language.LSP.Message
 import Language.LSP.Utils
 import Libraries.Data.String.Extra
@@ -24,6 +23,8 @@ import Server.Log
 import Server.Utils
 import System.File
 import System.Path
+
+%hide Language.Reflection.TT.FC
 
 keyword : Doc IdrisAnn -> Doc IdrisAnn
 keyword = annotate $ Syntax Keyword
@@ -81,8 +82,8 @@ pShowMN (Local _ _ _ p) env acc =
 pShowMN _ _ acc = acc
 
 pshow : {vars : _}
-     -> Ref Ctxt Defs
-     => Ref Syn SyntaxInfo
+     -> Context.Ref Ctxt Defs
+     => Context.Ref Syn SyntaxInfo
      => Env Term vars
      -> Term vars
      -> Core (Doc IdrisAnn)
@@ -93,8 +94,8 @@ pshow env tm = do
   pure $ pShowMN ntm env $ prettyTerm itm
 
 pshowNoNorm : {vars : _}
-           -> Ref Ctxt Defs
-           => Ref Syn SyntaxInfo
+           -> Context.Ref Ctxt Defs
+           => Context.Ref Syn SyntaxInfo
            => Env Term vars
            -> Term vars
            -> Core (Doc IdrisAnn)
@@ -109,9 +110,9 @@ pshowNoNorm env tm = do
 ||| @uri The URI of the source file.
 ||| @err The compiler warning.
 export
-warningToDiagnostic : Ref Ctxt Defs
-            => Ref Syn SyntaxInfo
-            => Ref ROpts REPLOpts
+warningToDiagnostic : Context.Ref Ctxt Defs
+            => Context.Ref Syn SyntaxInfo
+            => Context.Ref ROpts REPLOpts
             => (caps : Maybe PublishDiagnosticsClientCapabilities)
             -> (uri : URI)
             -> (warning : Warning)
@@ -135,9 +136,9 @@ warningToDiagnostic caps uri warning = do
 ||| @uri The URI of the source file.
 ||| @err The compiler error.
 export
-errorToDiagnostic : Ref Ctxt Defs
-            => Ref Syn SyntaxInfo
-            => Ref ROpts REPLOpts
+errorToDiagnostic : Context.Ref Ctxt Defs
+            => Context.Ref Syn SyntaxInfo
+            => Context.Ref ROpts REPLOpts
             => (caps : Maybe PublishDiagnosticsClientCapabilities)
             -> (uri : URI)
             -> (error : Error)

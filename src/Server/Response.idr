@@ -13,7 +13,6 @@ import Idris.Pretty
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
-import Language.JSON
 import Language.LSP.Message
 import Language.LSP.Utils
 import Parser.Support
@@ -58,11 +57,11 @@ export
 serverNotInitialized : ResponseError
 serverNotInitialized = MkResponseError ServerNotInitialized "" JNull
 
-writeResponse : Ref LSPConf LSPConfiguration
+writeResponse : Context.Ref LSPConf LSPConfiguration
              => JSON
              -> Core ()
 writeResponse msg = do
-  let body = stringify msg
+  let body = encode msg
   let header = header (cast $ length body)
   outputHandle <- gets LSPConf outputHandle
   coreLift_ $ fPutStr outputHandle (header ++ body)
@@ -70,20 +69,20 @@ writeResponse msg = do
 
 ||| Sends a new notification from the server to the client.
 export
-sendNotificationMessage : Ref LSPConf LSPConfiguration
+sendNotificationMessage : Context.Ref LSPConf LSPConfiguration
                        => (method : Method Server Notification)
                        -> (params : MessageParams method)
                        -> Core ()
 sendNotificationMessage method params = do
   let msg = toJSON $ MkNotificationMessage method params
   writeResponse msg
-  logI Channel "Sent notification message for method \{stringify $ toJSON method}"
+  logI Channel "Sent notification message for method \{encode method}"
   logD Channel "Notification sent: \{stringify msg}"
 
 ||| Sends a request from the server to the client ignoring the result
 ||| TODO when client sends response we fail to parse it
 export
-sendRequestMessage_ : Ref LSPConf LSPConfiguration
+sendRequestMessage_ : Context.Ref LSPConf LSPConfiguration
                    => (method : Method Server Request)
                    -> (params : MessageParams method)
                    -> Core ()
@@ -97,7 +96,7 @@ sendRequestMessage_ method params = do
 
 ||| Sends a response message to a request received from the client.
 export
-sendResponseMessage : Ref LSPConf LSPConfiguration
+sendResponseMessage : Context.Ref LSPConf LSPConfiguration
                    => (method : Method Client Request)
                    -> ResponseMessage method
                    -> Core ()
@@ -109,7 +108,7 @@ sendResponseMessage method resp = do
 
 ||| Sends an error response to an unknown method.
 export
-sendUnknownResponseMessage : Ref LSPConf LSPConfiguration => ResponseError -> Core ()
+sendUnknownResponseMessage : Context.Ref LSPConf LSPConfiguration => ResponseError -> Core ()
 sendUnknownResponseMessage err = do
   -- The method type Initialize is irrelevant since the message is unknown, can use any method, the message would be the same.
   writeResponse (toJSON {a = ResponseMessage Initialize} (Failure (make MkNull) err))
@@ -123,10 +122,10 @@ sendUnknownResponseMessage err = do
 ||| @version Optional source version.
 ||| @errs Errors produced while trying to check the source.
 export
-sendDiagnostics : Ref LSPConf LSPConfiguration
-               => Ref Syn SyntaxInfo
-               => Ref Ctxt Defs
-               => Ref ROpts REPLOpts
+sendDiagnostics : Context.Ref LSPConf LSPConfiguration
+               => Context.Ref Syn SyntaxInfo
+               => Context.Ref Ctxt Defs
+               => Context.Ref ROpts REPLOpts
                => (caps : Maybe PublishDiagnosticsClientCapabilities)
                -> (uri : DocumentURI)
                -> (version : Maybe Int)
