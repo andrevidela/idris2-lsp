@@ -11,9 +11,11 @@ import Data.SortedMap
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
+import JSON.Simple.Derive
 import Language.LSP.CodeAction
 import Language.LSP.CodeAction.Utils
 import Language.LSP.Message
+import Language.LSP.Message.Utils
 import Language.LSP.Utils
 import Language.Reflection
 import Parser.Rule.Source

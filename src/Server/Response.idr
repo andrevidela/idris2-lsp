@@ -13,6 +13,7 @@ import Idris.Pretty
 import Idris.REPL.Opts
 import Idris.Resugar
 import Idris.Syntax
+import JSON.RPC
 import Language.LSP.Message
 import Language.LSP.Utils
 import Parser.Support
@@ -22,6 +23,8 @@ import Server.Log
 import Server.Utils
 import System.File
 
+%hide Core.Core.Error
+
 ||| Header for messages on-the-wire.
 ||| By specification only Content-Length is mandatory.
 header : Int -> String
@@ -29,33 +32,33 @@ header l = "Content-Length: \{show l}\{headerLineEnd}\{headerLineEnd}"
 
 ||| Response message for method not found or not implemented yet.
 export
-methodNotFound : ResponseError
-methodNotFound = MkResponseError MethodNotFound "Method not implemented yet" JNull
+methodNotFound : Error
+methodNotFound = MkError RPC.MethodNotFound "Method not implemented yet" Nothing
 
 ||| Response message for error while parsing a new message received.
 export
-parseError : ResponseError
-parseError = MkResponseError ParseError "Parse error" JNull
+parseError : Error
+parseError = MkError RPC.ParseError "Parse error" Nothing
 
 ||| Response message for internal server errors.
 export
-internalError : String -> ResponseError
-internalError msg = MkResponseError InternalError msg JNull
+internalError : String -> Error
+internalError msg = MkError RPC.InternalError msg Nothing
 
 ||| Response message for invalid requests.
 export
-invalidRequest : String -> ResponseError
-invalidRequest msg = MkResponseError InvalidRequest msg JNull
+invalidRequest : String -> Error
+invalidRequest msg = MkError InvalidRequest msg Nothing
 
 ||| Response message for invalid parameters to an otherwise valid method.
 export
-invalidParams : String -> ResponseError
-invalidParams msg = MkResponseError InvalidParams msg JNull
+invalidParams : String -> Error
+invalidParams msg = MkError InvalidParams msg Nothing
 
 ||| Response message for messages received before initialization.
 export
-serverNotInitialized : ResponseError
-serverNotInitialized = MkResponseError ServerNotInitialized "" JNull
+serverNotInitialized : Error
+serverNotInitialized = MkError (toErrorCode ServerNotInitialized) "" Nothing
 
 writeResponse : Context.Ref LSPConf LSPConfiguration
              => JSON
@@ -67,6 +70,8 @@ writeResponse msg = do
   coreLift_ $ fPutStr outputHandle (header ++ body)
   coreLift_ $ fflush outputHandle
 
+toParams : MessageParams method -> Parameters
+
 ||| Sends a new notification from the server to the client.
 export
 sendNotificationMessage : Context.Ref LSPConf LSPConfiguration
@@ -74,7 +79,9 @@ sendNotificationMessage : Context.Ref LSPConf LSPConfiguration
                        -> (params : MessageParams method)
                        -> Core ()
 sendNotificationMessage method params = do
-  let msg = toJSON $ MkNotificationMessage method params
+  let msg = MkNotification (show method) (toParams params)
+  ?hwiu
+  {-
   writeResponse msg
   logI Channel "Sent notification message for method \{encode method}"
   logD Channel "Notification sent: \{stringify msg}"
@@ -108,7 +115,7 @@ sendResponseMessage method resp = do
 
 ||| Sends an error response to an unknown method.
 export
-sendUnknownResponseMessage : Context.Ref LSPConf LSPConfiguration => ResponseError -> Core ()
+sendUnknownResponseMessage : Context.Ref LSPConf LSPConfiguration => Error -> Core ()
 sendUnknownResponseMessage err = do
   -- The method type Initialize is irrelevant since the message is unknown, can use any method, the message would be the same.
   writeResponse (toJSON {a = ResponseMessage Initialize} (Failure (make MkNull) err))

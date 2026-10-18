@@ -1,6 +1,11 @@
 [custom.all.lsp-lib]
 type        = "github"
 url         = "https://github.com/andrevidela/lsp-lib"
-commit      = "main"
+commit      = "latest:main"
 ipkg        = "lsp-lib.ipkg"
+[custom.all.jsonrpc]
+type = "github"
+url = "https://gitlab.com/avidela/idris2-jsonrpc"
+ipkg = "jsonrpc.ipkg"
+commit = "a24430a60f1cd2232a3253826e697d6838840dc8"
 

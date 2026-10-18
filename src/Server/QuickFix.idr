@@ -20,6 +20,8 @@ import Server.Diagnostics
 import Server.Utils
 import Server.Log
 
+%hide JSON.RPC.Error
+
 pShowMN : {vars : _} -> Term vars -> Env Term vars -> Doc IdrisAnn -> Doc IdrisAnn
 pShowMN (Local _ _ _ p) env acc =
   case dropAllNS (nameAt p) of

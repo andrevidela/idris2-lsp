@@ -25,6 +25,7 @@ import System.File
 import System.Path
 
 %hide Language.Reflection.TT.FC
+%hide JSON.RPC.Error
 
 keyword : Doc IdrisAnn -> Doc IdrisAnn
 keyword = annotate $ Syntax Keyword

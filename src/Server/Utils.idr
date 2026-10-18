@@ -11,6 +11,7 @@ import Core.Metadata
 import Data.Bits
 import Data.List
 import Data.String
+import Data.OneOf
 import Idris.Pretty
 import Idris.Syntax
 import Language.JSON
@@ -23,9 +24,8 @@ import System
 import System.Info
 
 %hide Language.Reflection.TT.FilePos
-%hide Language.Reflection.TT.Name
 %hide Language.Reflection.TT.FC
-
+%hide Language.Reflection.TT.Name
 %hide Text.Bounds.Position
 
 ||| Gets a specific component of a reference, using the supplied projection.
