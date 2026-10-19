@@ -7,5 +7,5 @@ ipkg        = "lsp-lib.ipkg"
 type = "github"
 url = "https://gitlab.com/avidela/idris2-jsonrpc"
 ipkg = "jsonrpc.ipkg"
-commit = "a24430a60f1cd2232a3253826e697d6838840dc8"
+commit = "46f871f1c85040cc960e25e90671b8e7416b19a1"
 

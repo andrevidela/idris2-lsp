@@ -36,6 +36,8 @@ import System
 import System.Directory
 import System.File
 
+%hide Language.Reflection.catch
+
 data Header = ContentLength Int | ContentType String | StartContent
 
 Show Header where
@@ -69,6 +71,10 @@ parseHeaderPart h = do
     Just (ContentType s) => parseHeaderPart h
     Just StartContent => pure $ Right Nothing
     Nothing => pure $ Right Nothing
+
+fromValidId : OneOf [Int, String] -> JSONRPCId
+fromValidId (Here x) = IntegerId $ cast x
+fromValidId (There (Here x)) = StringId x
 
 handleMessage : Context.Ref LSPConf LSPConfiguration
             => Context.Ref Ctxt Defs
@@ -108,28 +114,31 @@ handleMessage = do
           let Right id = fromJSON {a=OneOf [Int, String]} idJSON
             | _ => do logE Channel "Message id is not of the correct type"
                       sendUnknownResponseMessage (invalidRequest "id is not int or string")
+          let validId = fromValidId id
           let Right method = fromJSON {a=Method Client Request} methodJSON
             | _ => do logE Channel "Method not found"
-                      sendResponseMessage Initialize $ Failure (extend id) methodNotFound
+                      sendResponseMessage Initialize $ Failure $ MkResponseError methodNotFound validId
           logI Channel "Received request for method \{show (toJSON method)}"
           let Just params = (lookup "params" fields) >>= eitherToMaybe . (fromJSON @{findParamsImpl method})
             | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
-                      sendResponseMessage method $ Failure (extend id) (invalidParams "Invalid params for send \{show methodJSON}")
+                      sendResponseMessage method $ Failure $ MkResponseError
+                        (MkError InvalidParams "Invalid params for send \{show methodJSON}" Nothing)
+                        validId
           -- handleRequest can be modified to use a callback if needed
           result <- catch (handleRequest method params) $ \err => do
             logE Server "Error while handling request: \{show err}"
             resetContext (Virtual Interactive)
-            pure $ Left (MkResponseError (Custom 4) (show err) JNull)
+            pure $ Left $ MkError (CustomError 4) (show err) Nothing
           sendResponseMessage method $ case result of
-            Left error => Failure (extend id) error
-            Right result => Success (extend id) result
+            Left error => Failure (MkResponseError error validId)
+            Right result => Success (MkResponseSuccess (toJSON @{findResultImpl method} result) validId)
 
         Nothing => do -- notification
           let Right method = fromJSON {a=Method Client Notification} methodJSON
             | _ => do logE Channel "Method not found"
                       sendUnknownResponseMessage methodNotFound
           logI Channel "Received notification for method \{show (toJSON method)}"
-          let Just params = fromMaybeJSONParameters method (lookup "params" fields)
+          let Just params = (lookup "params" fields) >>= eitherToMaybe . (fromJSON @{findParamsImpl method})
             | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
                       sendUnknownResponseMessage $ invalidParams "Invalid params for send \{show methodJSON}"
           catch (handleNotification method params) $ \err => do
