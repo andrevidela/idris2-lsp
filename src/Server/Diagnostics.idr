@@ -142,7 +142,7 @@ errorToDiagnostic : Context.Ref Ctxt Defs
             => Context.Ref ROpts REPLOpts
             => (caps : Maybe PublishDiagnosticsClientCapabilities)
             -> (uri : URI)
-            -> (error : Error)
+            -> (error : Core.Error)
             -> Core Diagnostic
 errorToDiagnostic caps uri err = do
   defs <- get Ctxt
