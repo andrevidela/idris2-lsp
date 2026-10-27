@@ -119,8 +119,9 @@ handleMessage = do
             | _ => do logE Channel "Method not found"
                       sendResponseMessage Initialize $ Failure $ MkResponseError methodNotFound validId
           logI Channel "Received request for method \{show (toJSON method)}"
-          let Just params = (lookup "params" fields) >>= eitherToMaybe . (fromJSON @{findParamsImpl method})
-            | _ => do logE Channel "Message with method \{show (toJSON method)} has invalid parameters"
+          let Right params = (maybe (Left $ ([],"no params")) Right $ lookup "params" fields) >>= (fromJSON @{findParamsImpl method})
+            | Left err => do
+                      logE Channel "Message with method \{encode method} has invalid parameters: \{show err}"
                       sendResponseMessage method $ Failure $ MkResponseError
                         (MkError InvalidParams "Invalid params for send \{show methodJSON}" Nothing)
                         validId
