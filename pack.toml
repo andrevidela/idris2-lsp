@@ -1,7 +1,7 @@
 [custom.all.lsp-lib]
 type        = "github"
 url         = "https://github.com/andrevidela/lsp-lib"
-commit      = "96abb874b30b889eac94def878d6e91b19a9daaa"
+commit      = "94292b02804ff1c84b24b5b031748863b76ebc6d"
 ipkg        = "lsp-lib.ipkg"
 
 [custom.all.jsonrpc]
